@@ -1,0 +1,358 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+                <title>Visualizing-Global-Terrorism</title>
+            
+
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--<link href="main.css" rel="stylesheet">-->
+    <link rel="stylesheet" type="text/css" href="main.css">
+    
+                <h1 align="center"> Visualizing-Global-Terrorism </h1>
+            
+</head>
+<body>
+    
+                <div class="container">
+                    <div id="map"> </div>
+                </div>
+            <table align="center" border="0">
+                <tr>
+                    <td>
+                <img src="1XXSx.png" alt="Mountain View" align="center">
+                </td>
+                </tr>
+            </table>
+    
+    <div id="totalKill"></div>
+        
+    <div class="container slider-bg">
+        <div id="slider"></div>
+    </div>
+        
+
+    <script src="d3.min.js"></script>
+    <script src="topojson.v1.min.js"></script>
+    <script src="datamaps.world.min.js"></script>
+    <script src="underscore-min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="country_name_mapping.js"></script>
+    <script >var WORLDMAP = {
+  yearData: {},
+  Country_data: {},
+  data: {},
+    getMonthID: function(month) {
+    var monthName = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC' ];
+    return monthName[month-1];
+  },
+  currentMap: null,
+  colorScale: null,
+  countries :[],
+  update: function (firstYear, firstMonth, lastYear, lastMonth) {
+    this.Country_data = {};
+    firstYear = typeof firstYear !== 'undefined' ? firstYear : 1992;
+    firstMonth = typeof firstMonth !== 'undefined' ? firstMonth : 1;
+    lastYear = typeof lastYear !== 'undefined' ? lastYear : 2014;
+    lastMonth = typeof lastMonth !== 'undefined' ? lastMonth : 1;
+    var totalKilled = 0;
+    for(var i=0; i < yearData.length; i++){
+      var isRange = true;
+      
+      if(yearData[i].year < firstYear){
+          isRange = false;
+      } else if(yearData[i].year == firstYear){
+        if(yearData[i].month < firstMonth)
+          isRange = false;
+      };
+      
+      if(yearData[i].year > lastYear){
+        isRange = false;
+      } else if(yearData[i].year == lastYear){
+        if(yearData[i].month > lastMonth - 1)
+          isRange = false;
+      };
+     
+      if(isRange){
+        totalKilled += parseInt(yearData[i].nkill);
+        if(this.Country_data[yearData[i].country] == null){
+          this.Country_data[yearData[i].country] = yearData[i].nkill
+        }
+        else{
+          this.Country_data[yearData[i].country] = yearData[i].nkill + this.Country_data[yearData[i].country];
+        };  
+      };
+    };
+    totalKilled = totalKilled.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");    
+     var html =   " From " + this.getMonthID(firstMonth)+', ' + firstYear + " to "+ this.getMonthID(lastMonth)+', '+     lastYear    + " " +  '<b>' +    totalKilled    + '</b>' + " were killed.";
+    document.getElementById('totalKill').innerHTML = html;
+    for (var country in this.Country_data) {
+      var obj = {}
+      obj['fillKey'] = Math.ceil(this.colorScale(this.Country_data[country]));
+      obj['nkill'] = this.Country_data[country];
+      console.log(country);
+      console.log(obj);
+      this.Country_data[country] = obj;
+    }
+    $("#map svg").remove();
+    var currentMap = new Datamap({
+      element: document.getElementById('map'),
+      fills: {
+        8: "#FF0000",
+        7: "#FF1100",
+        6: "#FF2200",
+        5: "#FFFF00",
+        4: "#EEFF00",
+        3: "#DDFF00",
+        2: "#22FF00",
+        1: "#11FF00",
+        0: "#00FF00",
+        defaultFill: "#FBFBFB"
+      },
+      yearData: this.Country_data,
+     data: this.Country_data,
+      geographyConfig:{
+      	// dataUrl: null, //if not null, datamaps will fetch the map JSON (currently only supports topojson)
+       // hideAntarctica: true,
+       // borderWidth: 1,
+       // borderOpacity: 1,
+       // borderColor: '#FDFDFD',
+       // popupTemplate: function(geography, data) { //this function should just return a string
+       //   return '<div class="hoverinfo"><strong>' + geography.properties.name + '</strong></div>';
+       // },
+       // popupOnHover: true, //disable the popup while hovering
+       // highlightOnHover: true,
+       // highlightFillColor: '#FC8D59',
+       // highlightBorderColor: 'rgba(250, 15, 160, 0.2)',
+       // highlightBorderWidth: 2,
+       // highlightBorderOpacity: 1
+      	
+        borderColor: "#000000",
+        highlightFillColor: 'hsl(0,0%,20%)',
+        highlightOnHover: true,
+        highlightBorderWidth: 0,
+        fillOpacity: 0.5,
+       
+        popupTemplate: function(geography, data) {
+        	 console.log( 'HI');
+          if(data)
+            return '<div class="hoverinfo">' + geography.properties.name + '<br>' +  data.nkill + ' people killed' + 
+                    '</div>'
+          else
+            return '<div class="hoverinfo">' + geography.properties.name + '<br>nobody killed</div>'; 
+        }
+      }
+    });
+  }, 
+  init: function () {
+
+    this.colorScale = d3.scale.log()
+                        .clamp(true)
+                        .domain([1, 2000])
+                        .range([0, 8])
+                        .nice();
+    svg = d3.select("div#map"); 
+    d3.json("2000_2014.json", function(error, yearData) {
+      if (error) return console.warn(error);
+      this.yearData = yearData;
+      for(var i=0; i<yearData.length; i++) {
+      	
+        yearData[i].year = parseInt(yearData[i].year);
+//         yearData[i].month = parseInt(yearData[i].month);
+        yearData[i].nkill = parseInt(yearData[i].nkill);
+         yearData[i].nkill = yearData[i].nkill || 0;
+      }
+      slider.init();
+    }); 
+}
+}
+ </script>
+   <script> // Slider area
+var slider_generator = function(){
+  var margin = {top:0, right:15, bottom: 20, left: 15},
+      canvas_width,
+      w,
+      h = 60,
+      barPadding = 1;
+  var initCanvasSize = function(){
+      canvas_width = +(d3.select('#slider').style('width').replace('px', ''));
+      w = canvas_width - margin.left - margin.right;
+  }
+  // doc: https://github.com/mbostock/d3/wiki/Time-Formatting
+  var timeFormat = d3.time.format("%Y-%m");
+  var uLimit = new Date(2013, 12);
+  var lLimit = new Date(1999, 12);
+  var terriostData = [];
+  var draw = function(terriostData) {
+  var svg = d3.select("#slider")
+                .append("svg")
+                .attr("width", w + margin.left + margin.right)
+                .attr("height", h + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + ", " + margin.top + ")");
+
+    var killRange = [d3.min(terriostData, function(d) { return d.nkill; }),
+                        d3.max(terriostData, function(d) { return d.nkill; })];
+    var timeRange = [d3.min(terriostData, function(d) { return d.time; }),
+                        d3.max(terriostData, function(d) { return d.time; })];
+
+    var yAxis = d3.scale.linear()
+                         .domain(killRange)
+                         .range([0.07*h,h])
+                         .nice();
+    var colourScale = d3.scale.log()
+                         .domain(killRange)
+                         .range([80, 0]);                                                                        
+    var scaleTime = d3.time.scale()
+                        .domain(timeRange)
+                        .nice(d3.time.year)
+                        .range([0,w]);
+                        
+// Document: http://bl.ocks.org/mbostock/6232537
+
+    var brush = d3.svg.brush()
+        .x(scaleTime)
+        .extent([new Date(2010, 12), new Date(2011, 12)])
+        .on("brushend", function() {
+          if (!d3.event.sourceEvent) return; 
+          var zeroExtent = brush.extent(),
+          oneExtend = zeroExtent.map(d3.time.month.round);
+          if (oneExtend[0] >= oneExtend[1]) {
+            oneExtend[0] = d3.time.month.offset(d3.time.month.ceil(zeroExtent[0]), -6);
+            oneExtend[1] = d3.time.month.offset(d3.time.month.ceil(zeroExtent[1]), 6);
+          }
+          if (oneExtend[0] < lLimit) {
+            oneExtend[0] = d3.time.month.ceil(lLimit);
+          }
+
+          if (oneExtend[1] > uLimit) {
+            oneExtend[1] = d3.time.month.ceil(uLimit);
+          }
+
+          d3.select(this).transition()
+            .call(brush.extent(oneExtend))
+            .call(brush.event);
+          update_view(oneExtend);
+        })
+        .on("brush", function(){
+          var zeroExtent = brush.extent(),
+          oneExtend = zeroExtent.map(d3.time.month.round);
+
+          if (oneExtend[0] >= oneExtend[1]) {
+            oneExtend[0] = d3.time.month.floor(zeroExtent[0]);
+            oneExtend[1] = d3.time.month.ceil(zeroExtent[1]);
+          }
+
+          update_view(oneExtend);
+        });
+       
+    // Draw the Chart
+    //
+    svg.selectAll("rect")
+        .data(terriostData)
+        .enter()
+        .append("rect")
+        .attr({
+          x: function(d, i) { return i* (w/terriostData.length);},
+          y: function(d) { return h - yAxis(d.nkill);},
+          width: w / terriostData.length - barPadding,
+          height: function(d) { return yAxis(d.nkill);},
+          fill: function(d) { return "hsl(0, 0%,"+ colourScale(d.nkill) + "%)";}
+        });
+      
+    
+    // Draw grid
+    svg.append("g")
+      .attr("class", "x grid")
+      .attr("transform", "translate(0," + h + ")")
+      .call(d3.svg.axis()
+            .scale(scaleTime)
+            .orient("bottom")
+            .ticks(d3.time.year, 1)
+            .tickFormat(""))
+          .selectAll(".tick")
+            .classed("minor", function(d) { return d.getFullYear(); });
+
+    var xAxis = d3.svg.axis()
+                    .scale(scaleTime)
+                    .orient("bottom")
+                    .ticks(d3.time.year, 1)
+                    .tickFormat(d3.time.format('%Y'))
+
+    svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + h + ")")
+      .call(xAxis);
+
+    var gBrush = svg.append("g")
+      .attr("class", "brush")
+      .call(brush)
+      .call(brush.event);
+
+    gBrush.selectAll("rect")
+      .attr("height", h);
+  };
+
+  var cRange;
+  var update_view = function(mRange) {
+    //console.log(mRange);
+    cRange = mRange;
+
+    // update the world map
+    WORLDMAP.update(
+      mRange[0].getFullYear(), mRange[0].getMonth()+1,
+      mRange[1].getFullYear(), mRange[1].getMonth()+1
+    );
+
+  };
+
+  var init = function() {
+    initCanvasSize();
+
+    // Read csv file
+    d3.csv("sum_of_month.csv", function(data){
+      terriostData = data.map(function(d) {
+        return {
+          time: timeFormat.parse(d.time), 
+          nkill: +d.nkill
+        }
+      });
+      draw(terriostData);
+    });
+  };
+
+  var redraw = function(){
+    d3.select("div#slider svg").remove();
+    initCanvasSize();
+    draw(terriostData);
+    update_view(cRange);
+  };
+
+  return {
+    init: init,
+    redraw: redraw,
+    terriostData: function() { return terriostData; }
+  };
+};
+</script>
+    <script>
+            var circlesmap;
+var slider;
+
+$(document).ready(function(){
+  
+  slider = slider_generator();
+  WORLDMAP.init();
+});
+
+$(window).resize(function(){
+
+  slider.redraw();
+});
+
+</script>
+</body>
+</html>

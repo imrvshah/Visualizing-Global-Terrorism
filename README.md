@@ -1,2 +1,3 @@
 # Visualizing-Global-Terrorism
-Final Project
+
+Project
